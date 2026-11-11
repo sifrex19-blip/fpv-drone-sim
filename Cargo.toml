@@ -1,0 +1,23 @@
+[package]
+name = "fpv-drone-sim"
+version = "0.1.0"
+edition = "2024"
+description = "High-performance FPV drone simulator written in Rust"
+authors = ["you"]
+
+[dependencies]
+bevy = { version = "0.20", default-features = true }
+# bevy's built-in gilrs integration handles any gamepad/controller
+
+[profile.dev]
+opt-level = 1
+
+[profile.dev.package."*"]
+opt-level = 3
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
+strip = true
+panic = "abort"
