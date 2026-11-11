@@ -48,22 +48,27 @@ fn gather_input(
     if keys.pressed(KeyCode::ShiftLeft) { throttle -= 1.0; }
 
     // Gamepad/controller: use the first connected one (works with any controller)
+    let mut gamepad_arm = false;
+    let mut gamepad_reset = false;
     if let (Some(mut axes), Some(mut buttons)) = (axes, buttons) {
         for gamepad in gamepads.iter() {
             if let Some(v) = axes.get(GamepadAxis::LeftStickX) { roll += v; }
             if let Some(v) = axes.get(GamepadAxis::LeftStickY) { pitch += v; }
             if let Some(v) = axes.get(GamepadAxis::RightStickX) { yaw += v; }
-            let rt = buttons.pressed(GamepadButton::RightTrigger2);
-            let lt = buttons.pressed(GamepadButton::LeftTrigger2);
-            if rt { throttle += 1.0; }
-            if lt { throttle -= 1.0; }
-            if let Some(v) = axes.get(GamepadAxis::RightZ) { throttle += v.max(0.0); }
-            if let Some(v) = axes.get(GamepadAxis::LeftZ) { throttle -= v.max(0.0); }
+            // Prefer analog axes; fall back to digital triggers, don't sum both.
+            let rt_axis = axes.get(GamepadAxis::RightZ);
+            let lt_axis = axes.get(GamepadAxis::LeftZ);
+            if rt_axis.is_some() || lt_axis.is_some() {
+                if let Some(v) = rt_axis { throttle += v.max(0.0); }
+                if let Some(v) = lt_axis { throttle -= v.max(0.0); }
+            } else {
+                if buttons.pressed(GamepadButton::RightTrigger2) { throttle += 1.0; }
+                if buttons.pressed(GamepadButton::LeftTrigger2) { throttle -= 1.0; }
+            }
+            if buttons.just_pressed(GamepadButton::South) { gamepad_arm = true; }
+            if buttons.just_pressed(GamepadButton::East) { gamepad_reset = true; }
             let _ = gamepad;
         }
-        // arm/reset via controller
-        // (handled below with buttons still in scope)
-        let _ = &mut buttons;
     }
 
     // Normalize throttle to 0..1
@@ -73,6 +78,6 @@ fn gather_input(
     input.pitch = pitch.clamp(-1.0, 1.0);
     input.roll = roll.clamp(-1.0, 1.0);
     input.yaw = yaw.clamp(-1.0, 1.0);
-    input.arm = keys.just_pressed(KeyCode::Enter);
-    input.reset = keys.just_pressed(KeyCode::KeyR);
+    input.arm = keys.just_pressed(KeyCode::Enter) || gamepad_arm;
+    input.reset = keys.just_pressed(KeyCode::KeyR) || gamepad_reset;
 }

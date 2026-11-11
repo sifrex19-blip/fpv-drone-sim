@@ -60,7 +60,7 @@ fn follow_drone(
 ) {
     if let (Ok(drone_t), Ok(mut cam_t)) = (drone_q.single(), cam_q.single_mut()) {
         // FPV: camera sits slightly behind/above drone, looks forward along drone heading
-        let offset = drone_t.rotation * Vec3::new(0.0, 0.05, 0.15);
+        let offset = drone_t.rotation * Vec3::new(0.0, 0.1, 0.2);
         cam_t.translation = drone_t.translation + offset;
         cam_t.rotation = drone_t.rotation;
     }

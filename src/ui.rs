@@ -23,7 +23,7 @@ impl Plugin for UiPlugin {
             .add_systems(OnExit(AppState::Settings), despawn::<SettingsRoot>)
             .add_systems(OnEnter(AppState::InGame), spawn_hud)
             .add_systems(OnExit(AppState::InGame), despawn::<HudRoot>)
-            .add_systems(Update, (menu_buttons, settings_buttons, update_hud));
+            .add_systems(Update, (menu_buttons, settings_buttons, update_hud.run_if(in_state(AppState::InGame)), pause_on_esc.run_if(in_state(AppState::InGame))));
     }
 }
 
@@ -31,9 +31,9 @@ fn spawn_menu(mut commands: Commands) {
     commands.spawn((Node { width: Val::Percent(100.0), height: Val::Percent(100.0), flex_direction: FlexDirection::Column, align_items: AlignItems::Center, justify_content: JustifyContent::Center, row_gap: Val::Px(20.0), ..default() }, BackgroundColor(Color::srgb(0.05,0.05,0.1)), MenuRoot))
         .with_children(|p| {
             p.spawn((Text::new("FPV DRONE SIM"), TextFont { font_size: bevy::text::FontSize::Px(48.0), ..default() }, TextColor(Color::WHITE)));
-            p.spawn((Node { width: Val::Px(200.0), height: Val::Px(50.0), justify_content: JustifyContent::Center, align_items: AlignItems::Center, ..default() }, BackgroundColor(Color::srgb(0.2,0.4,0.8)), PlayBtn)).with_children(|p| { p.spawn((Text::new("PLAY"), TextFont{font_size: bevy::text::FontSize::Px(24.0),..default()}, TextColor(Color::WHITE))); });
-            p.spawn((Node { width: Val::Px(200.0), height: Val::Px(50.0), justify_content: JustifyContent::Center, align_items: AlignItems::Center, ..default() }, BackgroundColor(Color::srgb(0.3,0.3,0.3)), SettingsBtn)).with_children(|p| { p.spawn((Text::new("SETTINGS"), TextFont{font_size: bevy::text::FontSize::Px(24.0),..default()}, TextColor(Color::WHITE))); });
-            p.spawn((Node { width: Val::Px(200.0), height: Val::Px(50.0), justify_content: JustifyContent::Center, align_items: AlignItems::Center, ..default() }, BackgroundColor(Color::srgb(0.5,0.1,0.1)), QuitBtn)).with_children(|p| { p.spawn((Text::new("QUIT"), TextFont{font_size: bevy::text::FontSize::Px(24.0),..default()}, TextColor(Color::WHITE))); });
+            p.spawn((Node { width: Val::Px(200.0), height: Val::Px(50.0), justify_content: JustifyContent::Center, align_items: AlignItems::Center, ..default() }, BackgroundColor(Color::srgb(0.2,0.4,0.8)), PlayBtn, Interaction::None)).with_children(|p| { p.spawn((Text::new("PLAY"), TextFont{font_size: bevy::text::FontSize::Px(24.0),..default()}, TextColor(Color::WHITE))); });
+            p.spawn((Node { width: Val::Px(200.0), height: Val::Px(50.0), justify_content: JustifyContent::Center, align_items: AlignItems::Center, ..default() }, BackgroundColor(Color::srgb(0.3,0.3,0.3)), SettingsBtn, Interaction::None)).with_children(|p| { p.spawn((Text::new("SETTINGS"), TextFont{font_size: bevy::text::FontSize::Px(24.0),..default()}, TextColor(Color::WHITE))); });
+            p.spawn((Node { width: Val::Px(200.0), height: Val::Px(50.0), justify_content: JustifyContent::Center, align_items: AlignItems::Center, ..default() }, BackgroundColor(Color::srgb(0.5,0.1,0.1)), QuitBtn, Interaction::None)).with_children(|p| { p.spawn((Text::new("QUIT"), TextFont{font_size: bevy::text::FontSize::Px(24.0),..default()}, TextColor(Color::WHITE))); });
         });
 }
 
@@ -46,7 +46,7 @@ fn spawn_settings(mut commands: Commands, s: Res<GameSettings>) {
             p.spawn((Text::new(format!("Controller Sensitivity: {:.2}", s.controller_sensitivity)), TextFont{font_size: bevy::text::FontSize::Px(20.0),..default()}, TextColor(Color::WHITE)));
             p.spawn((Text::new(format!("Invert Pitch: {}", s.invert_pitch)), TextFont{font_size: bevy::text::FontSize::Px(20.0),..default()}, TextColor(Color::WHITE)));
             p.spawn((Text::new(format!("FOV: {:.0}", s.fov)), TextFont{font_size: bevy::text::FontSize::Px(20.0),..default()}, TextColor(Color::WHITE)));
-            p.spawn((Node { width: Val::Px(200.0), height: Val::Px(50.0), justify_content: JustifyContent::Center, align_items: AlignItems::Center, ..default() }, BackgroundColor(Color::srgb(0.3,0.3,0.3)), BackBtn)).with_children(|p| { p.spawn((Text::new("BACK"), TextFont{font_size: bevy::text::FontSize::Px(24.0),..default()}, TextColor(Color::WHITE))); });
+            p.spawn((Node { width: Val::Px(200.0), height: Val::Px(50.0), justify_content: JustifyContent::Center, align_items: AlignItems::Center, ..default() }, BackgroundColor(Color::srgb(0.3,0.3,0.3)), BackBtn, Interaction::None)).with_children(|p| { p.spawn((Text::new("BACK"), TextFont{font_size: bevy::text::FontSize::Px(24.0),..default()}, TextColor(Color::WHITE))); });
         });
 }
 
@@ -71,6 +71,10 @@ fn menu_buttons(mut next: ResMut<NextState<AppState>>, q: Query<(&Interaction, &
 
 fn settings_buttons(mut next: ResMut<NextState<AppState>>, q: Query<(&Interaction,&BackBtn), Changed<Interaction>>) {
     for (i,_) in q.iter() { if *i == Interaction::Pressed { next.set(AppState::Menu); } }
+}
+
+fn pause_on_esc(keys: Res<ButtonInput<KeyCode>>, mut next: ResMut<NextState<AppState>>) {
+    if keys.just_pressed(KeyCode::Escape) { next.set(AppState::Menu); }
 }
 
 fn despawn<T: Component>(mut commands: Commands, q: Query<Entity, With<T>>) {

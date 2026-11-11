@@ -17,6 +17,7 @@ pub struct Drone {
 #[derive(Resource)]
 pub struct DroneConfig {
     pub mass: f32,
+    pub inertia: f32,
     pub thrust_max: f32,
     pub torque_strength: f32,
     pub drag: f32,
@@ -28,6 +29,7 @@ impl Default for DroneConfig {
     fn default() -> Self {
         Self {
             mass: 0.5,
+            inertia: 0.02,
             thrust_max: 12.0,
             torque_strength: 6.0,
             drag: 0.5,
@@ -105,7 +107,7 @@ fn drone_physics(time: Res<Time>, config: Res<DroneConfig>, input: Res<DroneInpu
         let accel = force / config.mass;
         drone.velocity += accel * dt;
         let ang_drag = -drone.angular_velocity * config.angular_drag;
-        drone.angular_velocity += (torque_world / config.mass + ang_drag) * dt;
+        drone.angular_velocity += (torque_world / config.inertia + ang_drag) * dt;
         transform.translation += drone.velocity * dt;
         let dq = Quat::from_scaled_axis(drone.angular_velocity * dt);
         transform.rotation = (transform.rotation * dq).normalize();
