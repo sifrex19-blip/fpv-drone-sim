@@ -9,6 +9,10 @@ impl Plugin for CameraPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(OnEnter(AppState::InGame), spawn_camera)
             .add_systems(OnExit(AppState::InGame), despawn_camera)
+            .add_systems(OnEnter(AppState::Menu), spawn_ui_camera)
+            .add_systems(OnEnter(AppState::Settings), spawn_ui_camera)
+            .add_systems(OnExit(AppState::Menu), despawn_ui_camera)
+            .add_systems(OnExit(AppState::Settings), despawn_ui_camera)
             .add_systems(Update, follow_drone.run_if(in_state(AppState::InGame)));
     }
 }
@@ -16,10 +20,19 @@ impl Plugin for CameraPlugin {
 #[derive(Component)]
 struct FpvCamera;
 
+#[derive(Component)]
+struct UiCamera;
+
 fn despawn_camera(mut commands: Commands, q: Query<Entity, With<FpvCamera>>) {
     for e in q.iter() { commands.entity(e).despawn(); }
 }
 
+fn spawn_ui_camera(mut commands: Commands) {
+    commands.spawn((Camera2d::default(), UiCamera));
+}
+fn despawn_ui_camera(mut commands: Commands, q: Query<Entity, With<UiCamera>>) {
+    for e in q.iter() { commands.entity(e).despawn(); }
+}
 fn spawn_camera(mut commands: Commands) {
     commands.spawn((
         Camera3d::default(),
