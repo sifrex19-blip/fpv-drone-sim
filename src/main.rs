@@ -1,27 +1,41 @@
 // FPV Drone Simulator - main entry point
-// Built with Bevy for cross-platform 60fps+ performance.
 
 mod camera;
 mod drone;
 mod input;
+mod settings;
 mod ui;
 
 use bevy::prelude::*;
 use bevy::window::WindowResolution;
 use drone::DronePlugin;
+use input::InputPlugin;
+use settings::SettingsPlugin;
+use ui::UiPlugin;
+
+#[derive(States, Debug, Clone, Copy, Eq, PartialEq, Hash, Default)]
+pub enum AppState {
+    #[default]
+    Menu,
+    InGame,
+    Settings,
+}
 
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
                 title: "FPV Drone Sim".into(),
-                resolution: WindowResolution::new(1280, 720),                ..default()
+                resolution: WindowResolution::new(1280, 720),
+                ..default()
             }),
             ..default()
         }))
+        .init_state::<AppState>()
         .add_plugins(DronePlugin)
         .add_plugins(camera::CameraPlugin)
-        .add_plugins(input::InputPlugin)
-        .add_plugins(ui::UiPlugin)
+        .add_plugins(InputPlugin)
+        .add_plugins(SettingsPlugin)
+        .add_plugins(UiPlugin)
         .run();
 }
