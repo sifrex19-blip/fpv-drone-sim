@@ -13,6 +13,9 @@ use crate::drone::Drone;
 #[derive(Component)] struct SettingsBtn;
 #[derive(Component)] struct QuitBtn;
 #[derive(Component)] struct BackBtn;
+#[derive(Component)] struct RotProfileRow;
+#[derive(Component)] struct DeadzoneRow;
+#[derive(Component)] struct ExpoRow;
 
 pub struct UiPlugin;
 impl Plugin for UiPlugin {
@@ -46,6 +49,14 @@ fn spawn_settings(mut commands: Commands, s: Res<GameSettings>) {
             p.spawn((Text::new(format!("Controller Sensitivity: {:.2}", s.controller_sensitivity)), TextFont{font_size: bevy::text::FontSize::Px(20.0),..default()}, TextColor(Color::WHITE)));
             p.spawn((Text::new(format!("Invert Pitch: {}", s.invert_pitch)), TextFont{font_size: bevy::text::FontSize::Px(20.0),..default()}, TextColor(Color::WHITE)));
             p.spawn((Text::new(format!("FOV: {:.0}", s.fov)), TextFont{font_size: bevy::text::FontSize::Px(20.0),..default()}, TextColor(Color::WHITE)));
+            // clickable rows
+            p.spawn((Node { width: Val::Px(320.0), height: Val::Px(30.0), justify_content: JustifyContent::Center, align_items: AlignItems::Center, ..default() }, BackgroundColor(Color::srgb(0.2,0.2,0.3)), RotProfileRow, Interaction::None)).with_children(|p| { p.spawn((Text::new(format!("Rotation Profile: {}", ["Slow","Normal","Fast"][s.rotation_profile as usize])), TextFont{font_size: bevy::text::FontSize::Px(18.0),..default()}, TextColor(Color::WHITE))); });
+            p.spawn((Node { width: Val::Px(320.0), height: Val::Px(30.0), justify_content: JustifyContent::Center, align_items: AlignItems::Center, ..default() }, BackgroundColor(Color::srgb(0.2,0.2,0.3)), DeadzoneRow, Interaction::None)).with_children(|p| { p.spawn((Text::new(format!("Deadzone: {:.2}", s.deadzone)), TextFont{font_size: bevy::text::FontSize::Px(18.0),..default()}, TextColor(Color::WHITE))); });
+            p.spawn((Node { width: Val::Px(320.0), height: Val::Px(30.0), justify_content: JustifyContent::Center, align_items: AlignItems::Center, ..default() }, BackgroundColor(Color::srgb(0.2,0.2,0.3)), ExpoRow, Interaction::None)).with_children(|p| { p.spawn((Text::new(format!("Expo: {:.2}", s.expo)), TextFont{font_size: bevy::text::FontSize::Px(18.0),..default()}, TextColor(Color::WHITE))); });
+            // Controls section
+            p.spawn((Text::new("CONTROLS"), TextFont { font_size: bevy::text::FontSize::Px(24.0), ..default() }, TextColor(Color::WHITE)));
+            p.spawn((Text::new("Controller: gamepad supported (South=arm, Start=reset)"), TextFont{font_size: bevy::text::FontSize::Px(16.0),..default()}, TextColor(Color::WHITE)));
+            p.spawn((Text::new("Keyboard: W/S pitch, A/D roll, Q/E yaw, Space/Shift throttle, Enter arm, R reset"), TextFont{font_size: bevy::text::FontSize::Px(16.0),..default()}, TextColor(Color::WHITE)));
             p.spawn((Node { width: Val::Px(200.0), height: Val::Px(50.0), justify_content: JustifyContent::Center, align_items: AlignItems::Center, ..default() }, BackgroundColor(Color::srgb(0.3,0.3,0.3)), BackBtn, Interaction::None)).with_children(|p| { p.spawn((Text::new("BACK"), TextFont{font_size: bevy::text::FontSize::Px(24.0),..default()}, TextColor(Color::WHITE))); });
         });
 }
@@ -69,8 +80,36 @@ fn menu_buttons(mut next: ResMut<NextState<AppState>>, q: Query<(&Interaction, &
     for (i,_) in q3.iter() { if *i == Interaction::Pressed { std::process::exit(0); } }
 }
 
-fn settings_buttons(mut next: ResMut<NextState<AppState>>, q: Query<(&Interaction,&BackBtn), Changed<Interaction>>) {
-    for (i,_) in q.iter() { if *i == Interaction::Pressed { next.set(AppState::Menu); } }
+fn settings_buttons(
+    mut next: ResMut<NextState<AppState>>,
+    mut settings: ResMut<GameSettings>,
+    back_q: Query<(&Interaction,&BackBtn), Changed<Interaction>>,
+    rot_q: Query<(&Interaction, &Children), (Changed<Interaction>, With<RotProfileRow>)>,
+    dz_q: Query<(&Interaction, &Children), (Changed<Interaction>, With<DeadzoneRow>)>,
+    expo_q: Query<(&Interaction, &Children), (Changed<Interaction>, With<ExpoRow>)>,
+    mut text_q: Query<&mut Text>,
+) {
+    for (i,_) in back_q.iter() { if *i == Interaction::Pressed { next.set(AppState::Menu); } }
+    for (i, children) in rot_q.iter() {
+        if *i == Interaction::Pressed {
+            settings.rotation_profile = (settings.rotation_profile + 1) % 3;
+            for c in children.iter() { if let Ok(mut t) = text_q.get_mut(c) { t.0 = format!("Rotation Profile: {}", ["Slow","Normal","Fast"][settings.rotation_profile as usize]); } }
+        }
+    }
+    for (i, children) in dz_q.iter() {
+        if *i == Interaction::Pressed {
+            settings.deadzone = (settings.deadzone + 0.05).min(0.3);
+            if settings.deadzone > 0.29 { settings.deadzone = 0.0; }
+            for c in children.iter() { if let Ok(mut t) = text_q.get_mut(c) { t.0 = format!("Deadzone: {:.2}", settings.deadzone); } }
+        }
+    }
+    for (i, children) in expo_q.iter() {
+        if *i == Interaction::Pressed {
+            settings.expo = (settings.expo + 0.1).min(1.0);
+            if settings.expo > 0.99 { settings.expo = 0.0; }
+            for c in children.iter() { if let Ok(mut t) = text_q.get_mut(c) { t.0 = format!("Expo: {:.2}", settings.expo); } }
+        }
+    }
 }
 
 fn pause_on_esc(keys: Res<ButtonInput<KeyCode>>, mut next: ResMut<NextState<AppState>>) {

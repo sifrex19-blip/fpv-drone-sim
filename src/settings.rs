@@ -9,6 +9,19 @@ pub struct GameSettings {
     pub controller_sensitivity: f32,
     pub invert_pitch: bool,
     pub fov: f32,
+    pub rotation_profile: u8, // 0 slow,1 normal,2 fast
+    pub deadzone: f32,
+    pub expo: f32,
+}
+
+impl GameSettings {
+    pub fn rotation_multiplier(&self) -> f32 {
+        match self.rotation_profile {
+            0 => 0.5,
+            2 => 1.8,
+            _ => 1.0,
+        }
+    }
 }
 
 impl Default for GameSettings {
@@ -19,6 +32,9 @@ impl Default for GameSettings {
             controller_sensitivity: 1.0,
             invert_pitch: false,
             fov: 90.0,
+            rotation_profile: 1,
+            deadzone: 0.05,
+            expo: 0.0,
         }
     }
 }

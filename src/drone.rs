@@ -99,7 +99,7 @@ fn drone_physics(time: Res<Time>, config: Res<DroneConfig>, mut input: ResMut<Dr
         let pitch = input.pitch * sens * invert;
         let roll = input.roll * sens;
         let yaw = input.yaw * sens;
-        let torque = Vec3::new(pitch * config.torque_strength, yaw * config.torque_strength, -roll * config.torque_strength);
+        let torque = Vec3::new(pitch * config.torque_strength * settings.rotation_multiplier(), yaw * config.torque_strength * settings.rotation_multiplier(), -roll * config.torque_strength * settings.rotation_multiplier());
         let torque_world = transform.rotation * torque;
         let gravity = Vec3::new(0.0, -config.gravity * config.mass, 0.0);
         let drag = -drone.velocity * config.drag;
