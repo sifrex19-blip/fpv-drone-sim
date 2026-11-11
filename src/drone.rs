@@ -82,12 +82,12 @@ fn despawn_drone(mut commands: Commands, q: Query<Entity, Or<(With<Drone>, With<
     for e in q.iter() { commands.entity(e).despawn(); }
 }
 
-fn drone_physics(time: Res<Time>, config: Res<DroneConfig>, input: Res<DroneInput>, settings: Res<crate::settings::GameSettings>, mut query: Query<(&mut Transform, &mut Drone)>) {
+fn drone_physics(time: Res<Time>, config: Res<DroneConfig>, mut input: ResMut<DroneInput>, settings: Res<crate::settings::GameSettings>, mut query: Query<(&mut Transform, &mut Drone)>) {
     let dt = time.delta_secs();
     let sens = settings.controller_sensitivity;
     let invert = if settings.invert_pitch { -1.0 } else { 1.0 };
     for (mut transform, mut drone) in query.iter_mut() {
-        if input.arm { drone.armed = !drone.armed; }
+        if input.arm { drone.armed = !drone.armed; input.arm = false; }
         if !drone.armed {
             drone.velocity.y -= config.gravity * dt;
             transform.translation += drone.velocity * dt;

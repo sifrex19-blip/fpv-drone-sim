@@ -44,8 +44,13 @@ fn gather_input(
     if keys.pressed(KeyCode::KeyD) { roll += 1.0; }
     if keys.pressed(KeyCode::KeyQ) { yaw -= 1.0; }
     if keys.pressed(KeyCode::KeyE) { yaw += 1.0; }
-    if keys.pressed(KeyCode::Space) { throttle += 1.0; }
-    if keys.pressed(KeyCode::ShiftLeft) { throttle -= 1.0; }
+    let keyboard_throttle = if keys.pressed(KeyCode::Space) {
+        Some(1.0)
+    } else if keys.pressed(KeyCode::ShiftLeft) {
+        Some(0.0)
+    } else {
+        None
+    };
 
     // Gamepad/controller: use the first connected one (works with any controller)
     let mut gamepad_arm = false;
@@ -72,7 +77,11 @@ fn gather_input(
     }
 
     // Normalize throttle to 0..1
-    let t = (throttle * 0.5 + 0.5).clamp(0.0, 1.0);
+    let t = if let Some(kt) = keyboard_throttle {
+        kt
+    } else {
+        ((throttle * 0.5 + 0.5).clamp(0.0, 1.0))
+    };
 
     input.throttle = t;
     input.pitch = pitch.clamp(-1.0, 1.0);

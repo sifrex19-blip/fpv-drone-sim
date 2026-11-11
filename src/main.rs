@@ -32,6 +32,7 @@ fn main() {
             ..default()
         }))
         .init_state::<AppState>()
+        .insert_resource(ClearColor(Color::srgb(0.53,0.75,0.98)))
         .add_plugins(DronePlugin)
         .add_plugins(camera::CameraPlugin)
         .add_plugins(InputPlugin)

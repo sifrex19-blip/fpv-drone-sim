@@ -1,5 +1,3 @@
-// FPV camera: follows drone with low latency, minimal smoothing for responsiveness.
-
 use bevy::prelude::*;
 use crate::AppState;
 
@@ -7,7 +5,8 @@ pub struct CameraPlugin;
 
 impl Plugin for CameraPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(OnEnter(AppState::InGame), spawn_camera)
+        app.add_systems(Startup, spawn_sun)
+            .add_systems(OnEnter(AppState::InGame), spawn_camera)
             .add_systems(OnExit(AppState::InGame), despawn_camera)
             .add_systems(OnEnter(AppState::Menu), spawn_ui_camera)
             .add_systems(OnEnter(AppState::Settings), spawn_ui_camera)
@@ -23,23 +22,7 @@ struct FpvCamera;
 #[derive(Component)]
 struct UiCamera;
 
-fn despawn_camera(mut commands: Commands, q: Query<Entity, With<FpvCamera>>) {
-    for e in q.iter() { commands.entity(e).despawn(); }
-}
-
-fn spawn_ui_camera(mut commands: Commands) {
-    commands.spawn((Camera2d::default(), UiCamera));
-}
-fn despawn_ui_camera(mut commands: Commands, q: Query<Entity, With<UiCamera>>) {
-    for e in q.iter() { commands.entity(e).despawn(); }
-}
-fn spawn_camera(mut commands: Commands) {
-    commands.spawn((
-        Camera3d::default(),
-        Transform::from_xyz(0.0, 5.0, 0.0),
-        FpvCamera,
-    ));
-    // Sun
+fn spawn_sun(mut commands: Commands) {
     commands.spawn((
         DirectionalLight {
             illuminance: 10000.0,
@@ -54,13 +37,33 @@ fn spawn_camera(mut commands: Commands) {
     });
 }
 
+fn despawn_camera(mut commands: Commands, q: Query<Entity, With<FpvCamera>>, q2: Query<Entity, With<UiCamera>>) {
+    for e in q.iter() { commands.entity(e).despawn(); }
+    for e in q2.iter() { commands.entity(e).despawn(); }
+}
+
+fn spawn_ui_camera(mut commands: Commands) {
+    commands.spawn((Camera2d::default(), UiCamera));
+}
+fn despawn_ui_camera(mut commands: Commands, q: Query<Entity, With<UiCamera>>) {
+    for e in q.iter() { commands.entity(e).despawn(); }
+}
+fn spawn_camera(mut commands: Commands) {
+    commands.spawn((
+        Camera3d::default(),
+        Transform::from_xyz(0.0, 5.0, 0.0),
+        FpvCamera,
+    ));
+    // UI overlay camera
+    commands.spawn((Camera2d::default(), Camera { order: 1, ..default() }, UiCamera));
+}
+
 fn follow_drone(
     drone_q: Query<&Transform, (With<crate::drone::Drone>, Without<FpvCamera>)>,
     mut cam_q: Query<&mut Transform, With<FpvCamera>>,
 ) {
     if let (Ok(drone_t), Ok(mut cam_t)) = (drone_q.single(), cam_q.single_mut()) {
-        // FPV: camera sits slightly behind/above drone, looks forward along drone heading
-        let offset = drone_t.rotation * Vec3::new(0.0, 0.1, 0.2);
+        let offset = drone_t.rotation * Vec3::new(0.0, 0.05, 0.1);
         cam_t.translation = drone_t.translation + offset;
         cam_t.rotation = drone_t.rotation;
     }
