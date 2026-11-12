@@ -1,0 +1,68 @@
+# Controller Images
+
+Place PNG images named after controllers in this directory.
+Expected file names (one per controller):
+
+- Xbox Wireless Controller.png
+- Xbox Elite Wireless Controller Series 2.png
+- Xbox 360 Controller.png
+- Xbox One Controller.png
+- DualShock 4.png
+- DualSense.png
+- DualSense Edge.png
+- Nintendo Switch Pro Controller.png
+- Joy-Con (L).png
+- Joy-Con (R).png
+- Logitech F310.png
+- Logitech F710.png
+- Logitech Extreme 3D Pro.png
+- Logitech G940.png
+- Logitech G Saitek X52.png
+- Logitech G Saitek X56.png
+- Thrustmaster T.16000M.png
+- Thrustmaster HOTAS Warthog.png
+- Thrustmaster T.Flight HOTAS X.png
+- Thrustmaster T.Flight HOTAS 4.png
+- Thrustmaster Airbus Sidestick.png
+- Thrustmaster TWCS Throttle.png
+- VKB Gladiator NXT.png
+- VKB Gunfighter Mk.III.png
+- VKB STECS Throttle.png
+- Virpil Alpha Prime.png
+- Virpil MongoosT-50CM3.png
+- Virpil CM3 Throttle.png
+- Winwing Orion 2.png
+- Winwing Orion HOTAS.png
+- Winwing F-16EX Throttle.png
+- Saitek X52 Pro.png
+- Saitek Pro Flight Yoke.png
+- Saitek Pro Flight Rudder Pedals.png
+- Mad Catz F.L.Y.5.png
+- Razer Wolverine V2.png
+- Razer Kishi.png
+- 8BitDo SN30 Pro.png
+- 8BitDo Pro 2.png
+- 8BitDo Ultimate.png
+- Generic USB Joystick.png
+- Generic Gamepad.png
+- Generic HOTAS.png
+- HORI Fighting Commander.png
+- HORI Split Pad Pro.png
+- PowerA Enhanced Controller.png
+- SCUF Instinct.png
+- Nacon Revolution 5 Pro.png
+- Steam Deck Controller.png
+- Valve Index Controller.png
+- Oculus Touch.png
+- Meta Quest Touch.png
+- CH Products Fighterstick.png
+- CH Products Pro Throttle.png
+- CH Products Pro Pedals.png
+- Realsimulator FSSB R3.png
+- Realsimulator R2.png
+- Honeycomb Alpha Yoke.png
+- Honeycomb Bravo Throttle.png
+- Turtle Beach Recon.png
+- Victrix Pro BFG.png
+- PDP Afterglow.png
+- SteelSeries Stratus+.png
