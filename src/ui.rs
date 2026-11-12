@@ -50,7 +50,7 @@ impl Plugin for UiPlugin {
             .add_systems(OnExit(AppState::Statistics), despawn::<PageRoot>)
             .add_systems(OnEnter(AppState::About), spawn_simple_page("About"))
             .add_systems(OnExit(AppState::About), despawn::<PageRoot>)
-            .add_systems(Update, (nav_buttons, controller_select, quit_button, update_hud.run_if(in_state(AppState::Play)), pause_on_esc.run_if(in_state(AppState::Play)), update_live_input_ui.run_if(in_state(AppState::Controller)), mapping_controls.run_if(in_state(AppState::Controller))));
+            .add_systems(Update, (nav_buttons, controller_select, quit_button, update_ui_text, pause_on_esc.run_if(in_state(AppState::Play)), mapping_controls.run_if(in_state(AppState::Controller))));
     }
 }
 #[derive(Component)] struct HudRoot;
@@ -270,53 +270,57 @@ fn spawn_hud(mut commands: Commands) {
         .with_children(|p| { p.spawn((Text::new("HUD"), TextFont{font_size: bevy::text::FontSize::Px(16.0),..default()}, TextColor(Color::WHITE), HudText)); });
 }
 
-fn update_hud(input: Res<DroneInput>, drone_q: Query<&Drone>, mut text_q: Query<&mut Text, With<HudText>>) {
-    if let Ok(mut t) = text_q.single_mut() {
-        let armed = drone_q.single().map(|d| d.armed).unwrap_or(false);
-        t.0 = format!("Armed: {} | T:{:.2} P:{:.2} R:{:.2} Y:{:.2}", if armed{"YES"}else{"NO"}, input.throttle, input.pitch, input.roll, input.yaw);
-    }
-}
-
 fn pause_on_esc(mut next: ResMut<NextState<AppState>>, keys: Res<ButtonInput<KeyCode>>) {
     if keys.just_pressed(KeyCode::Escape) { next.set(AppState::Home); }
 }
 
-fn update_live_input_ui(
+fn update_ui_text(
+    input: Res<DroneInput>,
+    drone_q: Query<&Drone>,
     live: Res<LiveInput>,
     cal: Res<CalibrationState>,
     mapping: Res<InputMapping>,
-    mut name_q: Query<&mut Text, With<LiveNameText>>,
-    mut axis_text_q: Query<(&mut Text, &LiveAxisText)>,
-    mut fill_q: Query<(&mut Node, &LiveAxisFill)>,
-    mut buttons_q: Query<&mut Text, With<LiveButtonsText>>,
-    mut calib_q: Query<&mut Text, With<CalibStatusText>>,
-    mut map_q: Query<&mut Text, With<MappingSummaryText>>,
+    mut params: ParamSet<(
+        Query<&mut Text, With<HudText>>,
+        Query<&mut Text, With<LiveNameText>>,
+        Query<(&mut Text, &LiveAxisText)>,
+        Query<&mut Text, With<LiveButtonsText>>,
+        Query<&mut Text, With<CalibStatusText>>,
+        Query<&mut Text, With<MappingSummaryText>>,
+        Query<(&mut Node, &LiveAxisFill)>,
+    )>,
 ) {
-    for mut t in name_q.iter_mut() {
-        t.0 = format!("Live: {}", if live.connected { live.name.clone() } else { "none".to_string() });
+    if let Ok(mut t) = params.p0().single_mut() {
+        let armed = drone_q.single().map(|d| d.armed).unwrap_or(false);
+        t.0 = format!("Armed: {} | T:{:.2} P:{:.2} R:{:.2} Y:{:.2}", if armed{"YES"}else{"NO"}, input.throttle, input.pitch, input.roll, input.yaw);
     }
     let vals = [live.roll, live.pitch, live.yaw, live.throttle];
-    for (mut t, marker) in axis_text_q.iter_mut() {
+    for mut t in params.p1().iter_mut() {
+        t.0 = format!("Live: {}", if live.connected { live.name.clone() } else { "none".to_string() });
+    }
+    for (mut t, marker) in params.p2().iter_mut() {
         t.0 = format!("{:.2}", vals[marker.0]);
     }
-    for (mut node, marker) in fill_q.iter_mut() {
+    for (mut node, marker) in params.p6().iter_mut() {
         let v = vals[marker.0];
         node.width = Val::Percent(((v + 1.0) / 2.0 * 100.0).clamp(0.0, 100.0));
     }
-    for mut t in buttons_q.iter_mut() {
+    for mut t in params.p3().iter_mut() {
         t.0 = format!("Buttons: {}", if live.buttons.is_empty() { "None".to_string() } else { live.buttons.join(", ") });
     }
-    for mut t in calib_q.iter_mut() {
+    for mut t in params.p4().iter_mut() {
         t.0 = match cal.phase {
             CalibrationPhase::Idle => if cal.calibrated { "Calibrated".to_string() } else { "Idle".to_string() },
             CalibrationPhase::Center => format!("Calibrating center... ({}/90)", cal.samples),
             CalibrationPhase::MinMax => format!("Move sticks to extremes... ({}/240)", cal.samples),
         };
     }
-    for mut t in map_q.iter_mut() {
+    for mut t in params.p5().iter_mut() {
         t.0 = mapping_summary(mapping.clone());
     }
 }
+
+
 
 fn mapping_controls(
     mut mapping: ResMut<InputMapping>,
