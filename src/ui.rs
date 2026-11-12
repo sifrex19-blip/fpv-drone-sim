@@ -13,6 +13,7 @@ use crate::drone::Drone;
 #[derive(Component)] struct SettingsBtn;
 #[derive(Component)] struct QuitBtn;
 #[derive(Component)] struct BackBtn;
+#[derive(Component)] struct ControllerItem(String);
 #[derive(Component)] struct RotProfileRow;
 #[derive(Component)] struct DeadzoneRow;
 #[derive(Component)] struct ExpoRow;
@@ -26,17 +27,40 @@ impl Plugin for UiPlugin {
             .add_systems(OnExit(AppState::Settings), despawn::<SettingsRoot>)
             .add_systems(OnEnter(AppState::InGame), spawn_hud)
             .add_systems(OnExit(AppState::InGame), despawn::<HudRoot>)
-            .add_systems(Update, (menu_buttons, settings_buttons, update_hud.run_if(in_state(AppState::InGame)), pause_on_esc.run_if(in_state(AppState::InGame))));
+            .add_systems(Update, (menu_buttons, menu_controller_select, settings_buttons, update_hud.run_if(in_state(AppState::InGame)), pause_on_esc.run_if(in_state(AppState::InGame))));
     }
 }
 
-fn spawn_menu(mut commands: Commands) {
-    commands.spawn((Node { width: Val::Percent(100.0), height: Val::Percent(100.0), flex_direction: FlexDirection::Column, align_items: AlignItems::Center, justify_content: JustifyContent::Center, row_gap: Val::Px(20.0), ..default() }, BackgroundColor(Color::srgb(0.05,0.05,0.1)), MenuRoot))
-        .with_children(|p| {
-            p.spawn((Text::new("FPV DRONE SIM"), TextFont { font_size: bevy::text::FontSize::Px(48.0), ..default() }, TextColor(Color::WHITE)));
-            p.spawn((Node { width: Val::Px(200.0), height: Val::Px(50.0), justify_content: JustifyContent::Center, align_items: AlignItems::Center, ..default() }, BackgroundColor(Color::srgb(0.2,0.4,0.8)), PlayBtn, Interaction::None)).with_children(|p| { p.spawn((Text::new("PLAY"), TextFont{font_size: bevy::text::FontSize::Px(24.0),..default()}, TextColor(Color::WHITE))); });
-            p.spawn((Node { width: Val::Px(200.0), height: Val::Px(50.0), justify_content: JustifyContent::Center, align_items: AlignItems::Center, ..default() }, BackgroundColor(Color::srgb(0.3,0.3,0.3)), SettingsBtn, Interaction::None)).with_children(|p| { p.spawn((Text::new("SETTINGS"), TextFont{font_size: bevy::text::FontSize::Px(24.0),..default()}, TextColor(Color::WHITE))); });
-            p.spawn((Node { width: Val::Px(200.0), height: Val::Px(50.0), justify_content: JustifyContent::Center, align_items: AlignItems::Center, ..default() }, BackgroundColor(Color::srgb(0.5,0.1,0.1)), QuitBtn, Interaction::None)).with_children(|p| { p.spawn((Text::new("QUIT"), TextFont{font_size: bevy::text::FontSize::Px(24.0),..default()}, TextColor(Color::WHITE))); });
+fn spawn_menu(mut commands: Commands, settings: Res<GameSettings>) {
+    use crate::controllers::controller_database;
+    commands.spawn((Node { width: Val::Percent(100.0), height: Val::Percent(100.0), flex_direction: FlexDirection::Row, ..default() }, BackgroundColor(Color::srgb(0.02,0.03,0.08)), MenuRoot))
+        .with_children(|root| {
+            // Left: title + buttons
+            root.spawn((Node { width: Val::Percent(60.0), height: Val::Percent(100.0), flex_direction: FlexDirection::Column, align_items: AlignItems::Center, justify_content: JustifyContent::Center, row_gap: Val::Px(24.0), ..default() }, BackgroundColor(Color::srgb(0.02,0.04,0.12))))
+                .with_children(|p| {
+                    p.spawn((Text::new("FPV DRONE SIM"), TextFont { font_size: bevy::text::FontSize::Px(64.0), ..default() }, TextColor(Color::srgb(0.0,0.9,1.0))));
+                    // Play button glowing
+                    p.spawn((Node { width: Val::Px(260.0), height: Val::Px(70.0), justify_content: JustifyContent::Center, align_items: AlignItems::Center, border_radius: BorderRadius::all(Val::Px(16.0)), ..default() }, BackgroundColor(Color::srgb(0.0,0.7,0.9)), PlayBtn, Interaction::None)).with_children(|p| { p.spawn((Text::new("PLAY"), TextFont{font_size: bevy::text::FontSize::Px(30.0),..default()}, TextColor(Color::WHITE))); });
+                    p.spawn((Node { width: Val::Px(200.0), height: Val::Px(50.0), justify_content: JustifyContent::Center, align_items: AlignItems::Center, border_radius: BorderRadius::all(Val::Px(12.0)), ..default() }, BackgroundColor(Color::srgb(0.25,0.25,0.35)), SettingsBtn, Interaction::None)).with_children(|p| { p.spawn((Text::new("SETTINGS"), TextFont{font_size: bevy::text::FontSize::Px(22.0),..default()}, TextColor(Color::WHITE))); });
+                    p.spawn((Node { width: Val::Px(200.0), height: Val::Px(50.0), justify_content: JustifyContent::Center, align_items: AlignItems::Center, border_radius: BorderRadius::all(Val::Px(12.0)), ..default() }, BackgroundColor(Color::srgb(0.45,0.1,0.1)), QuitBtn, Interaction::None)).with_children(|p| { p.spawn((Text::new("QUIT"), TextFont{font_size: bevy::text::FontSize::Px(22.0),..default()}, TextColor(Color::WHITE))); });
+                });
+            // Right side panel: quick settings + controller browser
+            root.spawn((Node { width: Val::Percent(40.0), height: Val::Percent(100.0), flex_direction: FlexDirection::Column, padding: UiRect::all(Val::Px(16.0)), row_gap: Val::Px(12.0), ..default() }, BackgroundColor(Color::srgb(0.05,0.06,0.12))))
+                .with_children(|p| {
+                    p.spawn((Text::new("Quick Settings"), TextFont { font_size: bevy::text::FontSize::Px(24.0), ..default() }, TextColor(Color::srgb(0.0,0.9,1.0))));
+                    p.spawn((Text::new(format!("Selected Controller: {}", settings.selected_controller)), TextFont{font_size: bevy::text::FontSize::Px(16.0),..default()}, TextColor(Color::WHITE)));
+                    p.spawn((Text::new("Controller Browser"), TextFont { font_size: bevy::text::FontSize::Px(20.0), ..default() }, TextColor(Color::WHITE)));
+                    // scroll container
+                    p.spawn((Node { width: Val::Percent(100.0), height: Val::Px(400.0), overflow: Overflow::scroll_y(), ..default() }, BackgroundColor(Color::srgb(0.08,0.09,0.15))))
+                        .with_children(|sc| {
+                            for c in controller_database() {
+                                sc.spawn((Node { width: Val::Percent(100.0), height: Val::Px(32.0), align_items: AlignItems::Center, padding: UiRect::left(Val::Px(8.0)), ..default() }, BackgroundColor(Color::srgb(0.1,0.12,0.2)), ControllerItem(c.name.to_string()), Interaction::None))
+                                    .with_children(|r| {
+                                        r.spawn((Text::new(format!("{} ({})", c.name, c.vendor)), TextFont{font_size: bevy::text::FontSize::Px(14.0),..default()}, TextColor(Color::WHITE)));
+                                    });
+                            }
+                        });
+                });
         });
 }
 
@@ -108,6 +132,14 @@ fn settings_buttons(
             settings.expo = (settings.expo + 0.1).min(1.0);
             if settings.expo > 0.99 { settings.expo = 0.0; }
             for c in children.iter() { if let Ok(mut t) = text_q.get_mut(c) { t.0 = format!("Expo: {:.2}", settings.expo); } }
+        }
+    }
+}
+
+fn menu_controller_select(mut settings: ResMut<GameSettings>, q: Query<(&Interaction, &ControllerItem), Changed<Interaction>>) {
+    for (i, item) in q.iter() {
+        if *i == Interaction::Pressed {
+            settings.selected_controller = item.0.clone();
         }
     }
 }

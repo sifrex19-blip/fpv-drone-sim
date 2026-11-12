@@ -1,6 +1,7 @@
 // FPV Drone Simulator - main entry point
 
 mod camera;
+mod controllers;
 mod drone;
 mod input;
 mod settings;

@@ -12,6 +12,7 @@ pub struct GameSettings {
     pub rotation_profile: u8, // 0 slow,1 normal,2 fast
     pub deadzone: f32,
     pub expo: f32,
+    pub selected_controller: String,
 }
 
 impl GameSettings {
@@ -35,6 +36,7 @@ impl Default for GameSettings {
             rotation_profile: 1,
             deadzone: 0.05,
             expo: 0.0,
+            selected_controller: "Generic Gamepad".into(),
         }
     }
 }
