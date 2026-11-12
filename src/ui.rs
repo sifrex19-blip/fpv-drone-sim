@@ -7,6 +7,9 @@ use crate::settings::GameSettings;
 use crate::input::DroneInput;
 use crate::drone::Drone;
 use crate::controllers::{controller_database, ControllerEntry};
+use crate::live_input::LiveInput;
+use crate::calibration::{CalibrationState, CalibrateBtn, CalibrationPhase};
+use crate::mapping::{InputMapping, AxisSource};
 
 // Components
 #[derive(Component)] struct Sidebar;
@@ -19,6 +22,16 @@ use crate::controllers::{controller_database, ControllerEntry};
 #[derive(Component)] struct ConnStatus;
 #[derive(Component)] struct HudText;
 #[derive(Component)] struct MapRow(String, String); // setting name, action
+#[derive(Component)] struct LiveNameText;
+#[derive(Component)] struct LiveAxisText(usize);
+#[derive(Component)] struct LiveAxisFill(usize);
+#[derive(Component)] struct LiveButtonsText;
+#[derive(Component)] struct CalibStatusText;
+#[derive(Component)] struct MappingSummaryText;
+#[derive(Component)] struct MapCycleAxis(usize);
+#[derive(Component)] struct MapToggleReverse(usize);
+#[derive(Component)] struct SensDown;
+#[derive(Component)] struct SensUp;
 
 pub struct UiPlugin;
 impl Plugin for UiPlugin {
@@ -37,7 +50,7 @@ impl Plugin for UiPlugin {
             .add_systems(OnExit(AppState::Statistics), despawn::<PageRoot>)
             .add_systems(OnEnter(AppState::About), spawn_simple_page("About"))
             .add_systems(OnExit(AppState::About), despawn::<PageRoot>)
-            .add_systems(Update, (nav_buttons, controller_select, quit_button, update_hud.run_if(in_state(AppState::Play)), pause_on_esc.run_if(in_state(AppState::Play))));
+            .add_systems(Update, (nav_buttons, controller_select, quit_button, update_hud.run_if(in_state(AppState::Play)), pause_on_esc.run_if(in_state(AppState::Play)), update_live_input_ui.run_if(in_state(AppState::Controller)), mapping_controls.run_if(in_state(AppState::Controller))));
     }
 }
 #[derive(Component)] struct HudRoot;
@@ -95,17 +108,17 @@ fn card(parent: &mut ChildSpawnerCommands, title: &str, body: &str) {
 }
 
 // ---- Controller page ----
-fn spawn_controller_page(mut commands: Commands, settings: Res<GameSettings>) {
+fn spawn_controller_page(mut commands: Commands, settings: Res<GameSettings>, live: Res<LiveInput>, mapping: Res<InputMapping>, cal: Res<CalibrationState>) {
     let db = controller_database();
     commands.spawn((Node { width: Val::Percent(100.0), height: Val::Percent(100.0), flex_direction: FlexDirection::Row, ..default() }, BackgroundColor(Color::srgb(0.06,0.06,0.08)), PageRoot))
         .with_children(|root| {
             // Sidebar
             sidebar(root);
             // Left: database
-            root.spawn((Node { width: Val::Percent(50.0), height: Val::Percent(100.0), flex_direction: FlexDirection::Column, padding: UiRect::all(Val::Px(16.0)), row_gap: Val::Px(8.0), ..default() }, BackgroundColor(Color::srgb(0.07,0.07,0.1))))
+            root.spawn((Node { width: Val::Percent(45.0), height: Val::Percent(100.0), flex_direction: FlexDirection::Column, padding: UiRect::all(Val::Px(16.0)), row_gap: Val::Px(8.0), ..default() }, BackgroundColor(Color::srgb(0.07,0.07,0.1))))
                 .with_children(|left| {
                     left.spawn(text("Controller Database", 22.0, Color::WHITE));
-                    left.spawn((Node { width: Val::Percent(100.0), height: Val::Px(420.0), overflow: Overflow::scroll_y(), ..default() }, BackgroundColor(Color::srgb(0.09,0.09,0.12))))
+                    left.spawn((Node { width: Val::Percent(100.0), height: Val::Px(360.0), overflow: Overflow::scroll_y(), ..default() }, BackgroundColor(Color::srgb(0.09,0.09,0.12))))
                         .with_children(|sc| {
                             for c in db {
                                 sc.spawn((Node { width: Val::Percent(100.0), height: Val::Px(36.0), align_items: AlignItems::Center, padding: UiRect::left(Val::Px(10.0)), border_radius: BorderRadius::all(Val::Px(6.0)), ..default() }, BackgroundColor(Color::srgb(0.12,0.12,0.16)), ControllerItem(c.name.to_string()), Interaction::default()))
@@ -113,20 +126,73 @@ fn spawn_controller_page(mut commands: Commands, settings: Res<GameSettings>) {
                             }
                         });
                 });
-            // Right: status + preview
-            root.spawn((Node { width: Val::Percent(50.0), height: Val::Percent(100.0), flex_direction: FlexDirection::Column, padding: UiRect::all(Val::Px(16.0)), row_gap: Val::Px(12.0), align_items: AlignItems::Center, ..default() }, BackgroundColor(Color::srgb(0.07,0.07,0.1))))
+            // Right: status + live input + mapping
+            root.spawn((Node { width: Val::Percent(55.0), height: Val::Percent(100.0), flex_direction: FlexDirection::Column, padding: UiRect::all(Val::Px(16.0)), row_gap: Val::Px(10.0), ..default() }, BackgroundColor(Color::srgb(0.07,0.07,0.1))))
                 .with_children(|right| {
-                    right.spawn(text("Connection Status", 22.0, Color::WHITE));
-                    right.spawn((Node { width: Val::Px(16.0), height: Val::Px(16.0), border_radius: BorderRadius::all(Val::Px(8.0)), ..default() }, BackgroundColor(Color::srgb(0.5,0.5,0.5)), ConnStatus));
-                    right.spawn(text(&format!("Selected: {}", settings.selected_controller), 14.0, Color::WHITE));
-                    right.spawn(text("Preview", 18.0, Color::srgb(0.6,0.4,1.0)));
-                    right.spawn((Node { width: Val::Px(300.0), height: Val::Px(200.0), justify_content: JustifyContent::Center, align_items: AlignItems::Center, border_radius: BorderRadius::all(Val::Px(12.0)), ..default() }, BackgroundColor(Color::srgb(0.12,0.12,0.16)), ControllerPreview))
-                        .with_children(|p| { p.spawn(text("[Controller Preview]", 14.0, Color::srgb(0.6,0.6,0.6))); });
-                    right.spawn(text("Live input will appear here when connected.", 12.0, Color::srgb(0.6,0.6,0.6)));
+                    right.spawn(text("Connection Status", 20.0, Color::WHITE));
+                    right.spawn((Node { width: Val::Px(16.0), height: Val::Px(16.0), border_radius: BorderRadius::all(Val::Px(8.0)), ..default() }, BackgroundColor(if live.connected { Color::srgb(0.2,0.9,0.3) } else { Color::srgb(0.5,0.5,0.5) }), ConnStatus));
+                    right.spawn((Text::new(format!("Selected: {}", settings.selected_controller)), TextFont { font_size: bevy::text::FontSize::Px(14.0), ..default() }, TextColor(Color::WHITE)));
+                    right.spawn((Text::new(format!("Live: {}", if live.connected { live.name.clone() } else { "none".into() })), TextFont { font_size: bevy::text::FontSize::Px(14.0), ..default() }, TextColor(Color::WHITE), LiveNameText));
+
+                    right.spawn(text("Live Input", 18.0, Color::srgb(0.6,0.4,1.0)));
+                    for i in 0..4 {
+                        let label = ["Roll","Pitch","Yaw","Throttle"][i];
+                        let val = [live.roll,live.pitch,live.yaw,live.throttle][i];
+                        right.spawn((Node { width: Val::Percent(100.0), height: Val::Px(24.0), flex_direction: FlexDirection::Row, align_items: AlignItems::Center, column_gap: Val::Px(8.0), ..default() }, BackgroundColor(Color::srgb(0.1,0.1,0.13))))
+                            .with_children(|r| {
+                                r.spawn(text(label, 13.0, Color::WHITE));
+                                r.spawn((Node { width: Val::Px(160.0), height: Val::Px(12.0), border_radius: BorderRadius::all(Val::Px(6.0)), ..default() }, BackgroundColor(Color::srgb(0.05,0.05,0.08))))
+                                    .with_children(|bar| {
+                                        bar.spawn((Node { width: Val::Percent(((val+1.0)/2.0*100.0).clamp(0.0,100.0)), height: Val::Percent(100.0), border_radius: BorderRadius::all(Val::Px(6.0)), ..default() }, BackgroundColor(Color::srgb(0.5,0.2,0.8)), LiveAxisFill(i)));
+                                    });
+                                r.spawn((Text::new(format!("{:.2}", val)), TextFont { font_size: bevy::text::FontSize::Px(13.0), ..default() }, TextColor(Color::srgb(0.6,0.4,1.0)), LiveAxisText(i)));
+                            });
+                    }
+                    right.spawn((Text::new(format!("Buttons: {}", if live.buttons.is_empty() { "None".to_string() } else { live.buttons.join(", ") })), TextFont { font_size: bevy::text::FontSize::Px(13.0), ..default() }, TextColor(Color::srgb(0.8,0.8,0.8)), LiveButtonsText));
+
+                    right.spawn(text("Calibration", 18.0, Color::srgb(0.6,0.4,1.0)));
+                    let status = match cal.phase {
+                        CalibrationPhase::Idle => if cal.calibrated { "Calibrated".to_string() } else { "Idle".to_string() },
+                        CalibrationPhase::Center => format!("Calibrating center... ({}/90)", cal.samples),
+                        CalibrationPhase::MinMax => format!("Move sticks to extremes... ({}/240)", cal.samples),
+                    };
+                    right.spawn((Text::new(status), TextFont { font_size: bevy::text::FontSize::Px(13.0), ..default() }, TextColor(Color::WHITE), CalibStatusText));
+                    right.spawn((Node { width: Val::Px(160.0), height: Val::Px(36.0), justify_content: JustifyContent::Center, align_items: AlignItems::Center, border_radius: BorderRadius::all(Val::Px(8.0)), ..default() }, BackgroundColor(Color::srgb(0.5,0.2,0.8)), CalibrateBtn, Interaction::default()))
+                        .with_children(|b| { b.spawn(text("Calibrate", 14.0, Color::WHITE)); });
+
+                    right.spawn(text("Input Mapping", 18.0, Color::srgb(0.6,0.4,1.0)));
+                    right.spawn((Text::new(mapping_summary(mapping.clone())), TextFont { font_size: bevy::text::FontSize::Px(12.0), ..default() }, TextColor(Color::WHITE), MappingSummaryText));
+                    for i in 0..4 {
+                        let label = ["Roll","Pitch","Yaw","Throttle"][i];
+                        right.spawn((Node { width: Val::Percent(100.0), height: Val::Px(30.0), flex_direction: FlexDirection::Row, align_items: AlignItems::Center, column_gap: Val::Px(6.0), ..default() }, BackgroundColor(Color::srgb(0.1,0.1,0.13))))
+                            .with_children(|r| {
+                                r.spawn(text(label, 12.0, Color::WHITE));
+                                r.spawn((Node { width: Val::Px(90.0), height: Val::Px(24.0), justify_content: JustifyContent::Center, align_items: AlignItems::Center, border_radius: BorderRadius::all(Val::Px(6.0)), ..default() }, BackgroundColor(Color::srgb(0.2,0.2,0.25)), MapCycleAxis(i), Interaction::default()))
+                                    .with_children(|b| { b.spawn(text("Cycle Axis", 11.0, Color::WHITE)); });
+                                r.spawn((Node { width: Val::Px(90.0), height: Val::Px(24.0), justify_content: JustifyContent::Center, align_items: AlignItems::Center, border_radius: BorderRadius::all(Val::Px(6.0)), ..default() }, BackgroundColor(Color::srgb(0.2,0.2,0.25)), MapToggleReverse(i), Interaction::default()))
+                                    .with_children(|b| { b.spawn(text("Toggle Rev", 11.0, Color::WHITE)); });
+                            });
+                    }
+                    right.spawn((Node { width: Val::Percent(100.0), height: Val::Px(30.0), flex_direction: FlexDirection::Row, align_items: AlignItems::Center, column_gap: Val::Px(6.0), ..default() }, BackgroundColor(Color::srgb(0.1,0.1,0.13))))
+                        .with_children(|r| {
+                            r.spawn(text("Sensitivity", 12.0, Color::WHITE));
+                            r.spawn((Node { width: Val::Px(60.0), height: Val::Px(24.0), justify_content: JustifyContent::Center, align_items: AlignItems::Center, border_radius: BorderRadius::all(Val::Px(6.0)), ..default() }, BackgroundColor(Color::srgb(0.2,0.2,0.25)), SensDown, Interaction::default()))
+                                .with_children(|b| { b.spawn(text("-", 14.0, Color::WHITE)); });
+                            r.spawn((Node { width: Val::Px(60.0), height: Val::Px(24.0), justify_content: JustifyContent::Center, align_items: AlignItems::Center, border_radius: BorderRadius::all(Val::Px(6.0)), ..default() }, BackgroundColor(Color::srgb(0.2,0.2,0.25)), SensUp, Interaction::default()))
+                                .with_children(|b| { b.spawn(text("+", 14.0, Color::WHITE)); });
+                        });
                 });
         });
 }
 
+fn mapping_summary(m: InputMapping) -> String {
+    format!("Roll:{}{} Pitch:{}{} Yaw:{}{} Thr:{}{} Sens:{:.2}",
+        m.roll.label(), if m.roll_reversed{" (rev)"}else{""},
+        m.pitch.label(), if m.pitch_reversed{" (rev)"}else{""},
+        m.yaw.label(), if m.yaw_reversed{" (rev)"}else{""},
+        m.throttle.label(), if m.throttle_reversed{" (rev)"}else{""},
+        m.sensitivity)
+}
 // ---- Settings page ----
 fn spawn_settings_page(mut commands: Commands, settings: Res<GameSettings>) {
     commands.spawn((Node { width: Val::Percent(100.0), height: Val::Percent(100.0), flex_direction: FlexDirection::Row, ..default() }, BackgroundColor(Color::srgb(0.06,0.06,0.08)), PageRoot))
@@ -213,4 +279,84 @@ fn update_hud(input: Res<DroneInput>, drone_q: Query<&Drone>, mut text_q: Query<
 
 fn pause_on_esc(mut next: ResMut<NextState<AppState>>, keys: Res<ButtonInput<KeyCode>>) {
     if keys.just_pressed(KeyCode::Escape) { next.set(AppState::Home); }
+}
+
+fn update_live_input_ui(
+    live: Res<LiveInput>,
+    cal: Res<CalibrationState>,
+    mapping: Res<InputMapping>,
+    mut name_q: Query<&mut Text, With<LiveNameText>>,
+    mut axis_text_q: Query<(&mut Text, &LiveAxisText)>,
+    mut fill_q: Query<(&mut Node, &LiveAxisFill)>,
+    mut buttons_q: Query<&mut Text, With<LiveButtonsText>>,
+    mut calib_q: Query<&mut Text, With<CalibStatusText>>,
+    mut map_q: Query<&mut Text, With<MappingSummaryText>>,
+) {
+    for mut t in name_q.iter_mut() {
+        t.0 = format!("Live: {}", if live.connected { live.name.clone() } else { "none".to_string() });
+    }
+    let vals = [live.roll, live.pitch, live.yaw, live.throttle];
+    for (mut t, marker) in axis_text_q.iter_mut() {
+        t.0 = format!("{:.2}", vals[marker.0]);
+    }
+    for (mut node, marker) in fill_q.iter_mut() {
+        let v = vals[marker.0];
+        node.width = Val::Percent(((v + 1.0) / 2.0 * 100.0).clamp(0.0, 100.0));
+    }
+    for mut t in buttons_q.iter_mut() {
+        t.0 = format!("Buttons: {}", if live.buttons.is_empty() { "None".to_string() } else { live.buttons.join(", ") });
+    }
+    for mut t in calib_q.iter_mut() {
+        t.0 = match cal.phase {
+            CalibrationPhase::Idle => if cal.calibrated { "Calibrated".to_string() } else { "Idle".to_string() },
+            CalibrationPhase::Center => format!("Calibrating center... ({}/90)", cal.samples),
+            CalibrationPhase::MinMax => format!("Move sticks to extremes... ({}/240)", cal.samples),
+        };
+    }
+    for mut t in map_q.iter_mut() {
+        t.0 = mapping_summary(mapping.clone());
+    }
+}
+
+fn mapping_controls(
+    mut mapping: ResMut<InputMapping>,
+    q_cycle: Query<(&Interaction, &MapCycleAxis), Changed<Interaction>>,
+    q_toggle: Query<(&Interaction, &MapToggleReverse), Changed<Interaction>>,
+    q_sens_down: Query<&Interaction, (Changed<Interaction>, With<SensDown>)>,
+    q_sens_up: Query<&Interaction, (Changed<Interaction>, With<SensUp>)>,
+) {
+    for (i, marker) in q_cycle.iter() {
+        if *i == Interaction::Pressed {
+            let axis = marker.0;
+            match axis {
+                0 => mapping.roll = mapping.roll.next(),
+                1 => mapping.pitch = mapping.pitch.next(),
+                2 => mapping.yaw = mapping.yaw.next(),
+                3 => mapping.throttle = mapping.throttle.next(),
+                _ => {}
+            }
+        }
+    }
+    for (i, marker) in q_toggle.iter() {
+        if *i == Interaction::Pressed {
+            let axis = marker.0;
+            match axis {
+                0 => mapping.roll_reversed = !mapping.roll_reversed,
+                1 => mapping.pitch_reversed = !mapping.pitch_reversed,
+                2 => mapping.yaw_reversed = !mapping.yaw_reversed,
+                3 => mapping.throttle_reversed = !mapping.throttle_reversed,
+                _ => {}
+            }
+        }
+    }
+    for i in q_sens_down.iter() {
+        if *i == Interaction::Pressed {
+            mapping.sensitivity = (mapping.sensitivity - 0.1).max(0.1);
+        }
+    }
+    for i in q_sens_up.iter() {
+        if *i == Interaction::Pressed {
+            mapping.sensitivity = (mapping.sensitivity + 0.1).min(3.0);
+        }
+    }
 }

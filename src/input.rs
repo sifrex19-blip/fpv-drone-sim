@@ -2,7 +2,7 @@
 // Bevy's gilrs integration auto-detects all controllers, so "any controller" works.
 
 use bevy::prelude::*;
-use crate::settings::GameSettings;
+use crate::live_input::LiveInput;
 
 /// Normalized control inputs in [-1, 1] (throttle [0,1]).
 #[derive(Resource, Default, Clone, Copy)]
@@ -20,20 +20,17 @@ pub struct InputPlugin;
 impl Plugin for InputPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<DroneInput>()
-            .add_systems(Update, gather_input);
+            .add_systems(Update, gather_input.after(crate::live_input::update_live_input));
     }
 }
 
 fn gather_input(
     keys: Res<ButtonInput<KeyCode>>,
+    live: Res<LiveInput>,
     gamepads: Query<&Gamepad>,
-    axes: Option<ResMut<Axis<GamepadAxis>>>,
-    buttons: Option<ResMut<ButtonInput<GamepadButton>>>,
-    settings: Res<GameSettings>,
     mut input: ResMut<DroneInput>,
 ) {
-    let mut axes = axes;
-    let mut buttons = buttons;
+
     // Keyboard fallback (WASD + Space/Shift for throttle)
     let mut pitch = 0.0;
     let mut roll = 0.0;
@@ -57,34 +54,17 @@ fn gather_input(
     // Gamepad/controller: use the first connected one (works with any controller)
     let mut gamepad_arm = false;
     let mut gamepad_reset = false;
-    let dz = settings.deadzone;
-    let expo = settings.expo;
-    fn apply(v: f32, dz: f32, expo: f32) -> f32 {
-        let a = v.abs();
-        if a < dz { return 0.0; }
-        let t = (a - dz) / (1.0 - dz);
-        let curved = t * (1.0 - expo) + expo * t * t * t;
-        curved.copysign(v)
+    // Gamepad contribution from LiveInput (mapped/calibrated)
+    if live.connected {
+        roll += live.roll;
+        pitch += live.pitch;
+        yaw += live.yaw;
+        throttle += live.throttle;
     }
-    if let (Some(mut axes), Some(mut buttons)) = (axes, buttons) {
-        for gamepad in gamepads.iter() {
-            if let Some(v) = axes.get(GamepadAxis::LeftStickX) { roll += apply(v, dz, expo); }
-            if let Some(v) = axes.get(GamepadAxis::LeftStickY) { pitch += apply(v, dz, expo); }
-            if let Some(v) = axes.get(GamepadAxis::RightStickX) { yaw += apply(v, dz, expo); }
-            // Prefer analog axes; fall back to digital triggers, don't sum both.
-            let rt_axis = axes.get(GamepadAxis::RightZ);
-            let lt_axis = axes.get(GamepadAxis::LeftZ);
-            if rt_axis.is_some() || lt_axis.is_some() {
-                if let Some(v) = rt_axis { throttle += apply(v.max(0.0), dz, expo); }
-                if let Some(v) = lt_axis { throttle -= apply(v.max(0.0), dz, expo); }
-            } else {
-                if buttons.pressed(GamepadButton::RightTrigger2) { throttle += 1.0; }
-                if buttons.pressed(GamepadButton::LeftTrigger2) { throttle -= 1.0; }
-            }
-            if buttons.just_pressed(GamepadButton::South) { gamepad_arm = true; }
-            if buttons.just_pressed(GamepadButton::Start) { gamepad_reset = true; }
-            let _ = gamepad;
-        }
+    for gamepad in gamepads.iter() {
+        if gamepad.just_pressed(GamepadButton::South) { gamepad_arm = true; }
+        if gamepad.just_pressed(GamepadButton::Start) { gamepad_reset = true; }
+        let _ = gamepad;
     }
 
     // Normalize throttle to 0..1

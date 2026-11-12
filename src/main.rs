@@ -4,6 +4,8 @@ mod camera;
 mod controllers;
 mod drone;
 mod input;
+mod live_input;
+mod calibration;
 mod mapping;
 mod persistence;
 mod settings;
@@ -13,6 +15,9 @@ use bevy::prelude::*;
 use bevy::window::WindowResolution;
 use drone::DronePlugin;
 use input::InputPlugin;
+use live_input::LiveInputPlugin;
+use calibration::CalibrationPlugin;
+use mapping::MappingPlugin;
 use settings::SettingsPlugin;
 use ui::UiPlugin;
 
@@ -44,6 +49,9 @@ fn main() {
         .add_plugins(DronePlugin)
         .add_plugins(camera::CameraPlugin)
         .add_plugins(InputPlugin)
+        .add_plugins(LiveInputPlugin)
+        .add_plugins(CalibrationPlugin)
+        .add_plugins(MappingPlugin)
         .add_plugins(SettingsPlugin)
         .add_plugins(persistence::PersistencePlugin)
         .add_plugins(UiPlugin)
