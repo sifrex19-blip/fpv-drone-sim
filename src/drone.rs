@@ -44,9 +44,9 @@ pub struct DronePlugin;
 impl Plugin for DronePlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<DroneConfig>()
-            .add_systems(OnEnter(AppState::InGame), spawn_drone)
-            .add_systems(OnExit(AppState::InGame), despawn_drone)
-            .add_systems(FixedUpdate, (drone_physics, drone_reset).chain().run_if(in_state(AppState::InGame)));
+            .add_systems(OnEnter(AppState::Play), spawn_drone)
+            .add_systems(OnExit(AppState::Play), despawn_drone)
+            .add_systems(FixedUpdate, (drone_physics, drone_reset).chain().run_if(in_state(AppState::Play)));
     }
 }
 

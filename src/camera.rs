@@ -6,13 +6,10 @@ pub struct CameraPlugin;
 impl Plugin for CameraPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(Startup, spawn_sun)
-            .add_systems(OnEnter(AppState::InGame), spawn_camera)
-            .add_systems(OnExit(AppState::InGame), despawn_camera)
-            .add_systems(OnEnter(AppState::Menu), spawn_ui_camera)
-            .add_systems(OnEnter(AppState::Settings), spawn_ui_camera)
-            .add_systems(OnExit(AppState::Menu), despawn_ui_camera)
-            .add_systems(OnExit(AppState::Settings), despawn_ui_camera)
-            .add_systems(Update, follow_drone.run_if(in_state(AppState::InGame)));
+            .add_systems(Startup, spawn_ui_camera)
+            .add_systems(OnEnter(AppState::Play), spawn_camera)
+            .add_systems(OnExit(AppState::Play), despawn_camera)
+            .add_systems(Update, follow_drone.run_if(in_state(AppState::Play)));
     }
 }
 
