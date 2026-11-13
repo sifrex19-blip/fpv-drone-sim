@@ -1,68 +1,25 @@
-# Controller Images
+# Controller images
 
-Place PNG images named after controllers in this directory.
-Expected file names (one per controller):
+Thumbnails for the Controller Database. Lookup order in `src/ui.rs`:
 
-- Xbox Wireless Controller.png
-- Xbox Elite Wireless Controller Series 2.png
-- Xbox 360 Controller.png
-- Xbox One Controller.png
-- DualShock 4.png
-- DualSense.png
-- DualSense Edge.png
-- Nintendo Switch Pro Controller.png
-- Joy-Con (L).png
-- Joy-Con (R).png
-- Logitech F310.png
-- Logitech F710.png
-- Logitech Extreme 3D Pro.png
-- Logitech G940.png
-- Logitech G Saitek X52.png
-- Logitech G Saitek X56.png
-- Thrustmaster T.16000M.png
-- Thrustmaster HOTAS Warthog.png
-- Thrustmaster T.Flight HOTAS X.png
-- Thrustmaster T.Flight HOTAS 4.png
-- Thrustmaster Airbus Sidestick.png
-- Thrustmaster TWCS Throttle.png
-- VKB Gladiator NXT.png
-- VKB Gunfighter Mk.III.png
-- VKB STECS Throttle.png
-- Virpil Alpha Prime.png
-- Virpil MongoosT-50CM3.png
-- Virpil CM3 Throttle.png
-- Winwing Orion 2.png
-- Winwing Orion HOTAS.png
-- Winwing F-16EX Throttle.png
-- Saitek X52 Pro.png
-- Saitek Pro Flight Yoke.png
-- Saitek Pro Flight Rudder Pedals.png
-- Mad Catz F.L.Y.5.png
-- Razer Wolverine V2.png
-- Razer Kishi.png
-- 8BitDo SN30 Pro.png
-- 8BitDo Pro 2.png
-- 8BitDo Ultimate.png
-- Generic USB Joystick.png
-- Generic Gamepad.png
-- Generic HOTAS.png
-- HORI Fighting Commander.png
-- HORI Split Pad Pro.png
-- PowerA Enhanced Controller.png
-- SCUF Instinct.png
-- Nacon Revolution 5 Pro.png
-- Steam Deck Controller.png
-- Valve Index Controller.png
-- Oculus Touch.png
-- Meta Quest Touch.png
-- CH Products Fighterstick.png
-- CH Products Pro Throttle.png
-- CH Products Pro Pedals.png
-- Realsimulator FSSB R3.png
-- Realsimulator R2.png
-- Honeycomb Alpha Yoke.png
-- Honeycomb Bravo Throttle.png
-- Turtle Beach Recon.png
-- Victrix Pro BFG.png
-- PDP Afterglow.png
-- SteelSeries Stratus+.png
+1. `<slug>.png` — a real product photo for that exact controller
+2. `_kind_<Kind>.png` — generated fallback illustration (Radio, Gamepad, Joystick, …)
+
+## File naming
+
+File names are slugs of the controller name from `src/controllers.rs`:
+lowercase, every run of non-alphanumeric characters becomes a single `_`.
+
+    "Radiomaster TX16S MkII"     -> radiomaster_tx16s_mkii.png
+    "Joy-Con (L)"                 -> joy_con_l.png
+    "Thrustmaster T.Flight HOTAS X" -> thrustmaster_t_flight_hotas_x.png
+
+## Sources
+
+- `tools/fetch-controller-images.ps1 -Repo <repo-root>` fetches freely licensed
+  photos (Wikimedia Commons first, Openverse CC0/PD/BY/BY-SA as fallback),
+  normalizes them to 240x180 letterboxed on the theme background, and writes
+  attribution to `CREDITS.md`.
+- `tools/gen-icons.ps1` generates the `_kind_*.png` fallbacks.
+
+Entries without a fetched photo simply keep the kind illustration.

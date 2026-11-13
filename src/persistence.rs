@@ -18,9 +18,28 @@ pub struct SavedSettings {
     pub deadzone: f32,
     pub expo: f32,
     pub selected_controller: String,
+    // Newer gameplay fields: default when missing so old files still load.
+    #[serde(default = "default_acro")]
+    pub flight_mode_acro: bool,
+    #[serde(default = "default_rate_center")]
+    pub rate_center: f32,
+    #[serde(default = "default_rate_max")]
+    pub rate_max: f32,
+    #[serde(default = "default_max_tilt")]
+    pub max_tilt: f32,
+    #[serde(default = "default_camera_tilt")]
+    pub camera_tilt: f32,
+    #[serde(default)]
+    pub chase_cam: bool,
     pub input_mapping: Option<InputMapping>,
     pub calibration: Option<CalibrationState>,
 }
+
+fn default_acro() -> bool { true }
+fn default_rate_center() -> f32 { 220.0 }
+fn default_rate_max() -> f32 { 760.0 }
+fn default_max_tilt() -> f32 { 40.0 }
+fn default_camera_tilt() -> f32 { 15.0 }
 
 impl From<&GameSettings> for SavedSettings {
     fn from(s: &GameSettings) -> Self {
@@ -34,6 +53,12 @@ impl From<&GameSettings> for SavedSettings {
             deadzone: s.deadzone,
             expo: s.expo,
             selected_controller: s.selected_controller.clone(),
+            flight_mode_acro: s.flight_mode_acro,
+            rate_center: s.rate_center,
+            rate_max: s.rate_max,
+            max_tilt: s.max_tilt,
+            camera_tilt: s.camera_tilt,
+            chase_cam: s.chase_cam,
             input_mapping: None,
             calibration: None,
         }
@@ -64,6 +89,12 @@ fn load_settings(mut settings: ResMut<GameSettings>, mut mapping: ResMut<InputMa
                 settings.rotation_profile = saved.rotation_profile;
                 settings.deadzone = saved.deadzone;
                 settings.expo = saved.expo;
+                settings.flight_mode_acro = saved.flight_mode_acro;
+                settings.rate_center = saved.rate_center;
+                settings.rate_max = saved.rate_max;
+                settings.max_tilt = saved.max_tilt;
+                settings.camera_tilt = saved.camera_tilt;
+                settings.chase_cam = saved.chase_cam;
                 if !saved.selected_controller.is_empty() {
                     settings.selected_controller = saved.selected_controller;
                 }

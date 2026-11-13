@@ -3,7 +3,7 @@
 use bevy::prelude::*;
 use bevy::ecs::name::Name;
 use crate::settings::GameSettings;
-use crate::mapping::{InputMapping, AxisSource, default_range};
+use crate::mapping::{InputMapping, default_range};
 use crate::calibration::CalibrationState;
 
 #[derive(Resource, Default, Clone)]

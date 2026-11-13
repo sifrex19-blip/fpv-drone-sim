@@ -13,6 +13,8 @@ pub struct DroneInput {
     pub yaw: f32,      // -1..1
     pub arm: bool,
     pub reset: bool,
+    pub toggle_mode: bool, // acro <-> angle
+    pub toggle_cam: bool,  // FPV <-> chase camera
 }
 
 pub struct InputPlugin;
@@ -24,7 +26,7 @@ impl Plugin for InputPlugin {
     }
 }
 
-fn gather_input(
+pub fn gather_input(
     keys: Res<ButtonInput<KeyCode>>,
     live: Res<LiveInput>,
     gamepads: Query<&Gamepad>,
@@ -54,6 +56,8 @@ fn gather_input(
     // Gamepad/controller: use the first connected one (works with any controller)
     let mut gamepad_arm = false;
     let mut gamepad_reset = false;
+    let mut gamepad_mode = false;
+    let mut gamepad_cam = false;
     // Gamepad contribution from LiveInput (mapped/calibrated)
     if live.connected {
         roll += live.roll;
@@ -64,14 +68,15 @@ fn gather_input(
     for gamepad in gamepads.iter() {
         if gamepad.just_pressed(GamepadButton::South) { gamepad_arm = true; }
         if gamepad.just_pressed(GamepadButton::Start) { gamepad_reset = true; }
-        let _ = gamepad;
+        if gamepad.just_pressed(GamepadButton::West) { gamepad_mode = true; }
+        if gamepad.just_pressed(GamepadButton::East) { gamepad_cam = true; }
     }
 
     // Normalize throttle to 0..1
     let t = if let Some(kt) = keyboard_throttle {
         kt
     } else {
-        ((throttle * 0.5 + 0.5).clamp(0.0, 1.0))
+        (throttle * 0.5 + 0.5).clamp(0.0, 1.0)
     };
 
     input.throttle = t;
@@ -80,4 +85,6 @@ fn gather_input(
     input.yaw = yaw.clamp(-1.0, 1.0);
     input.arm = keys.just_pressed(KeyCode::Enter) || gamepad_arm;
     input.reset = keys.just_pressed(KeyCode::KeyR) || gamepad_reset;
+    input.toggle_mode = keys.just_pressed(KeyCode::KeyM) || gamepad_mode;
+    input.toggle_cam = keys.just_pressed(KeyCode::KeyC) || gamepad_cam;
 }

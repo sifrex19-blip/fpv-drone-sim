@@ -2,7 +2,7 @@
 
 use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
-use crate::mapping::{InputMapping, AxisSource, default_range};
+use crate::mapping::{InputMapping, default_range};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum CalibrationPhase {

@@ -7,11 +7,52 @@ pub struct ControllerEntry {
     pub kind: &'static str,
 }
 
+/// URL/file-safe id for a controller image.
+/// Must stay in sync with `tools/fetch-controller-images.ps1` (Get-Slug).
+pub fn slug(name: &str) -> String {
+    let mut out = String::with_capacity(name.len());
+    let mut prev_sep = true;
+    for ch in name.chars() {
+        if ch.is_ascii_alphanumeric() {
+            out.push(ch.to_ascii_lowercase());
+            prev_sep = false;
+        } else if !prev_sep {
+            out.push('_');
+            prev_sep = true;
+        }
+    }
+    while out.ends_with('_') {
+        out.pop();
+    }
+    out
+}
+
 pub fn controller_database() -> Vec<ControllerEntry> {
     let mut v = Vec::new();
     macro_rules! add {
         ($name:expr, $vendor:expr, $kind:expr) => { v.push(ControllerEntry { name: $name, vendor: $vendor, kind: $kind }); };
     }
+    // FPV radio transmitters (listed first — the usual choice for drone pilots)
+    add!("Radiomaster TX16S MkII", "Radiomaster", "Radio");
+    add!("Radiomaster TX16S", "Radiomaster", "Radio");
+    add!("Radiomaster Boxer", "Radiomaster", "Radio");
+    add!("Radiomaster Zorro", "Radiomaster", "Radio");
+    add!("Radiomaster Pocket", "Radiomaster", "Radio");
+    add!("Radiomaster T8 Lite", "Radiomaster", "Radio");
+    add!("FrSky Taranis X9D Plus", "FrSky", "Radio");
+    add!("FrSky Taranis Q X7", "FrSky", "Radio");
+    add!("FrSky Taranis X-Lite S", "FrSky", "Radio");
+    add!("Jumper T-Pro V2", "Jumper", "Radio");
+    add!("Jumper T20", "Jumper", "Radio");
+    add!("Jumper T15", "Jumper", "Radio");
+    add!("Jumper T16", "Jumper", "Radio");
+    add!("BetaFPV LiteRadio 3 SE", "BetaFPV", "Radio");
+    add!("BetaFPV LiteRadio 2 Pro", "BetaFPV", "Radio");
+    add!("FlySky FS-i6X", "FlySky", "Radio");
+    add!("FlySky FS-i6S", "FlySky", "Radio");
+    add!("FlySky Nirvana NV14", "FlySky", "Radio");
+    add!("Spektrum DX6e", "Spektrum", "Radio");
+    add!("Spektrum NX8", "Spektrum", "Radio");
     // Xbox
     add!("Xbox Wireless Controller", "Microsoft", "Gamepad");
     add!("Xbox Elite Wireless Controller Series 2", "Microsoft", "Gamepad");
